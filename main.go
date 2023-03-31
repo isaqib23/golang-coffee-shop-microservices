@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/gorilla/mux"
 	"github.com/isaqib23/golang-coffee-shop-microservices/handlers"
 	"github.com/nicholasjackson/env"
 	"log"
@@ -22,8 +23,15 @@ func main() {
 	ph := handlers.NewProducts(l)
 
 	// create a new serve mux and register the handlers
-	sm := http.NewServeMux()
-	sm.Handle("/", ph)
+	sm := mux.NewRouter()
+
+	// Get Routes
+	getRoutes := sm.Methods(http.MethodGet).Subrouter()
+	getRoutes.HandleFunc("/", ph.GetProducts)
+
+	// Post Routes
+	postRoutes := sm.Methods(http.MethodPost).Subrouter()
+	postRoutes.HandleFunc("/add_product", ph.AddProduct)
 
 	// create a new server
 	s := http.Server{

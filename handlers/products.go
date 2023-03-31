@@ -14,19 +14,7 @@ func NewProducts(l *log.Logger) *Products {
 	return &Products{l}
 }
 
-// ServeHTTP is the main entry point for the handler and satisfies the http.Handler
-
-func (p *Products) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		p.getProducts(rw, *r)
-		return
-	}
-
-	// if no method is satisfied return an error
-	rw.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (p *Products) getProducts(rw http.ResponseWriter, r http.Request) {
+func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
 	// fetch the products from datastore
 	products := data.GetProducts()
 
@@ -35,4 +23,15 @@ func (p *Products) getProducts(rw http.ResponseWriter, r http.Request) {
 	if err != nil {
 		http.Error(rw, "Error while getting products", http.StatusInternalServerError)
 	}
+}
+
+func (p *Products) AddProduct(rw http.ResponseWriter, r *http.Request) {
+	prod := &data.Product{}
+
+	err := prod.FromJson(r.Body)
+	if err != nil {
+		http.Error(rw, "Invalid Data", http.StatusBadRequest)
+	}
+
+	data.AddProduct(prod)
 }
