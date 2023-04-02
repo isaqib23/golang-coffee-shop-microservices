@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/gorilla/mux"
+	"github.com/isaqib23/golang-coffee-shop-microservices/config"
 	"github.com/isaqib23/golang-coffee-shop-microservices/handlers"
 	"github.com/nicholasjackson/env"
 	"log"
@@ -15,6 +15,7 @@ import (
 var bindAddress = env.String("BIND_ADDRESS", false, "localhost:8080", "BIND ADDRESS OF SERVER")
 
 func main() {
+	ioc := config.NewIoC()
 	env.Parse()
 
 	l := log.New(os.Stdout, "coffee-shop", log.LstdFlags)
@@ -23,7 +24,7 @@ func main() {
 	ph := handlers.NewProducts(l)
 
 	// create a new serve mux and register the handlers
-	sm := mux.NewRouter()
+	sm := ioc.MuxRouter()
 
 	// Get Routes
 	getRoutes := sm.Methods(http.MethodGet).Subrouter()
@@ -32,22 +33,16 @@ func main() {
 	// Post Routes
 	postRoutes := sm.Methods(http.MethodPost).Subrouter()
 	postRoutes.HandleFunc("/add_product", ph.AddProduct)
+	postRoutes.Use(ph.MiddlewareValidateProduct)
 
 	// create a new server
-	s := http.Server{
-		Addr:         *bindAddress,      // configure the bind address
-		Handler:      sm,                // set the default handler
-		ErrorLog:     l,                 // set the logger for the server
-		ReadTimeout:  5 * time.Second,   // max time to read request from the client
-		WriteTimeout: 10 * time.Second,  // max time to write response to the client
-		IdleTimeout:  120 * time.Second, // max time for connections using TCP Keep-Alive
-	}
+	server := ioc.HttpServer()
 
 	// start the server
 	go func() {
-		l.Println("Starting server on port 8080")
+		l.Println("Starting server on port " + ioc.Port())
 
-		err := s.ListenAndServe()
+		err := server.ListenAndServe()
 		if err != nil {
 			l.Printf("Error starting server: %s\n", err)
 			os.Exit(1)
@@ -65,5 +60,5 @@ func main() {
 
 	// gracefully shutdown the server, waiting max 30 seconds for current operations to complete
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	s.Shutdown(ctx)
+	server.Shutdown(ctx)
 }

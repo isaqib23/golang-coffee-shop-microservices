@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"github.com/isaqib23/golang-coffee-shop-microservices/data"
 	"log"
 	"net/http"
@@ -34,4 +35,23 @@ func (p *Products) AddProduct(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	data.AddProduct(prod)
+}
+
+type KeyProduct struct{}
+
+func (p *Products) MiddlewareValidateProduct(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		prod := data.Product{}
+		err := prod.FromJson(r.Body)
+		if err != nil {
+			http.Error(rw, "Invalid Data", http.StatusBadRequest)
+		}
+
+		// add Product into request context
+		ctx := context.WithValue(r.Context(), KeyProduct{}, prod)
+		r = r.WithContext(ctx)
+
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		next.ServeHTTP(rw, r)
+	})
 }
