@@ -3,40 +3,27 @@ package main
 import (
 	"context"
 	"github.com/isaqib23/golang-coffee-shop-microservices/config"
-	"github.com/isaqib23/golang-coffee-shop-microservices/handlers"
+	"github.com/isaqib23/golang-coffee-shop-microservices/modules/user"
 	"github.com/nicholasjackson/env"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"time"
 )
 
-var bindAddress = env.String("BIND_ADDRESS", false, "localhost:8080", "BIND ADDRESS OF SERVER")
+var bindAddress = env.String("BIND_ADDRESS", false, ":8081", "BIND ADDRESS OF SERVER")
 
 func main() {
 	ioc := config.NewIoC()
-	env.Parse()
+	l := ioc.Logger()
 
-	l := log.New(os.Stdout, "coffee-shop", log.LstdFlags)
-
-	// create the handlers
-	ph := handlers.NewProducts(l)
-
-	// create a new serve mux and register the handlers
 	sm := ioc.MuxRouter()
 
-	// Get Routes
-	getRoutes := sm.Methods(http.MethodGet).Subrouter()
-	getRoutes.HandleFunc("/", ph.GetProducts)
-
-	// Post Routes
-	postRoutes := sm.Methods(http.MethodPost).Subrouter()
-	postRoutes.HandleFunc("/add_product", ph.AddProduct)
-	postRoutes.Use(ph.MiddlewareValidateProduct)
+	// User handler routes
+	user.SetupRoutes(ioc.DbClient(), sm)
 
 	// create a new server
-	server := ioc.HttpServer()
+	server := ioc.HttpServer(sm)
 
 	// start the server
 	go func() {
