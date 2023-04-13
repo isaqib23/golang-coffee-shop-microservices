@@ -17,18 +17,23 @@ var (
 	repo     *repository
 	repoOnce sync.Once
 
+	// ProviderSet => those providers are frequently use together, so provider set will be helpful
 	ProviderSet wire.ProviderSet = wire.NewSet(
 		ProvideHandler,
 		ProvideService,
 		ProvideRepository,
 
-		// bind each one of the interface
+		// Service interface depends on Repository interface
+		// and Repository provider returns pointer of the repository struct not interface
+		// to fix this uses Interface binding is needed to bind an abstract interface to its concrete implementation
+		// e.g: Bind *repository to the domain.UserRepository
 		wire.Bind(new(domain.UserHandler), new(*handler)),
 		wire.Bind(new(domain.UserService), new(*service)),
 		wire.Bind(new(domain.UserRepository), new(*repository)),
 	)
 )
 
+// ProvideHandler => initializer function for creating a single struct
 func ProvideHandler(svc domain.UserService) *handler {
 	hdlOnce.Do(func() {
 		hdl = &handler{svc: svc}
@@ -36,6 +41,7 @@ func ProvideHandler(svc domain.UserService) *handler {
 	return hdl
 }
 
+// ProvideService => initializer function for creating a single struct
 func ProvideService(repo domain.UserRepository) *service {
 	svcOnce.Do(func() {
 		svc = &service{repo: repo}
@@ -43,6 +49,7 @@ func ProvideService(repo domain.UserRepository) *service {
 	return svc
 }
 
+// ProvideRepository => initializer function for creating a single struct
 func ProvideRepository(db *database.DBClient) *repository {
 	repoOnce.Do(func() {
 		repo = &repository{db: db}
